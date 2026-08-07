@@ -124,3 +124,52 @@ Why did resolution require helpdesk intervention?
 - 08:07:45 - 4625 account locked out (unlock attempt)
 - 08:22:10 - 4722 account enabled by FINBRIDGE\helpdesk-admin
 - 08:23:44 - 4624 successful interactive logon for jsmith
+
+## Addendum: AVD Session Host Event Details
+
+### SHFIN-01-A Event Window: 2024-03-15 07:00-07:30
+- 07:02:10 - TerminalServices-LocalSessionManager Event 21: session logon succeeded for FINBRIDGE\mlopez, Session ID 3.
+- 07:02:14 - Kernel-General Event 1: system boot time recorded as 2024-03-15 02:03:11, confirming a restart after the overnight image update.
+- 07:02:16 - Application Error Event 1000: dwm.exe faulted in igdumd64.dll with exception code 0xc0000005.
+- 07:02:17 - TerminalServices-LocalSessionManager Event 40: session disconnected for FINBRIDGE\mlopez, Session ID 3.
+- 07:02:18 - Desktop Window Manager Event 9009: DWM exited with code 0x40010004.
+- 07:02:44 - TerminalServices-LocalSessionManager Event 21: session logon succeeded again for FINBRIDGE\mlopez, Session ID 3 (reconnect).
+- 07:02:46 - Application Error Event 1000: dwm.exe faulted again in igdumd64.dll with exception code 0xc0000005.
+- 07:02:47 - TerminalServices-LocalSessionManager Event 40: session disconnected again for FINBRIDGE\mlopez, Session ID 3.
+- 07:03:01 - Desktop Window Manager Event 9009: DWM exited again with code 0x40010004.
+- 07:03:10 - TerminalServices-LocalSessionManager Event 21: session logon succeeded a second time for FINBRIDGE\mlopez, Session ID 4.
+- 07:08:22 - TerminalServices-LocalSessionManager Event 21: session logon succeeded for FINBRIDGE\akapoor, Session ID 5.
+- 07:08:24 - Application Error Event 1000: dwm.exe faulted again in igdumd64.dll with exception code 0xc0000005.
+
+### SHFIN-02-A Comparison Host
+- 07:01:44 - TerminalServices-LocalSessionManager Event 21: session logon succeeded for FINBRIDGE\bwalker, Session ID 2.
+- 07:01:46 - Desktop Window Manager Event 9011: DWM started successfully.
+- No Application Error events were recorded in the same window.
+
+## Addendum: Reviewed Hypotheses
+
+### 1. Update-triggered credential cache invalidation or authentication behavior change
+Status: Supported.
+The updated host rebooted at 07:02:14 and immediately entered a DWM crash/disconnect loop at 07:02:16, 07:02:17, 07:02:46, and 07:02:47, while SHFIN-02-A remained clean with Event 9011 at 07:01:46 and no Application Error events. The split between updated and unaffected hosts supports an update-linked change.
+
+### 2. Group Policy Object change applied during the update window
+Status: Neutral.
+The evidence set does not contain a policy-processing event or a GPO-specific failure. The most relevant events are the DWM Application Error 1000 entries at 07:02:16, 07:02:46, and 07:08:24, which point to session instability rather than policy behavior.
+
+### 3. Service or scheduled task using stale credentials, re-triggered by machine restart post-update
+Status: Supported.
+Kernel-General Event 1 at 07:02:14 confirms the restart, and the first post-reboot session activity is followed immediately by DWM crashes at 07:02:16 and 07:02:46, with disconnects at 07:02:17 and 07:02:47. The logs do not name a specific service or task, but the restart-triggered timing is consistent with this hypothesis.
+
+### 4. Mobile device or secondary device with saved old password
+Status: Contradicted.
+The visible failures are local to SHFIN-01-A and tied to DWM/Application Error events at 07:02:16, 07:02:46, and 07:08:24, plus session disconnects at 07:02:17 and 07:02:47. There is no evidence in this window of external credential retries from a phone or secondary device.
+
+### 5. Pure user error, manual mistyping at DESKTOP-FB001
+Status: Contradicted.
+The event set for the affected AVD host shows successful session logons followed by DWM crashes and disconnects, not bad-password failures. The determining events are TerminalServices-LocalSessionManager Event 21 at 07:02:10, 07:02:44, 07:03:10, and DWM/Application Error events at 07:02:16, 07:02:46, and 07:08:24.
+
+## Addendum: Resolution
+
+The added AVD evidence points to a host/session-stability issue on SHFIN-01-A after the overnight image update, centered on repeated dwm.exe crashes in igdumd64.dll and repeated session disconnects. SHFIN-02-A remained unaffected during the same window, which strengthens the update-linked interpretation.
+
+This addendum does not replace the original jsmith lockout RCA. Instead, it clarifies that the new event evidence supports an AVD session-host problem as the updated analysis thread, while the previously documented jsmith account lockout sequence remains unchanged in the main body of the report.
