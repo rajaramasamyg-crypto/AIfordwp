@@ -173,3 +173,75 @@ The event set for the affected AVD host shows successful session logons followed
 The added AVD evidence points to a host/session-stability issue on SHFIN-01-A after the overnight image update, centered on repeated dwm.exe crashes in igdumd64.dll and repeated session disconnects. SHFIN-02-A remained unaffected during the same window, which strengthens the update-linked interpretation.
 
 This addendum does not replace the original jsmith lockout RCA. Instead, it clarifies that the new event evidence supports an AVD session-host problem as the updated analysis thread, while the previously documented jsmith account lockout sequence remains unchanged in the main body of the report.
+
+## Addendum: cthompson Security Log Evidence Review (2024-03-15 08:44-09:12)
+
+### Event Details In Scope
+- 08:44:01 - Security Event 4776 (Audit Failure): Domain credential validation failed for FINBRIDGE\cthompson with error code 0xC000006A (wrong password). Source workstation: DESKTOP-FB022.
+- 08:44:03 - Security Event 4625 (Audit Failure): Failed interactive logon (type 2) for FINBRIDGE\cthompson. Reason: unknown username or bad password. Source: DESKTOP-FB022.
+- 08:44:28 - Security Event 4625 (Audit Failure): Failed interactive logon (type 2) for FINBRIDGE\cthompson. Reason: unknown username or bad password. Source: DESKTOP-FB022.
+- 08:44:55 - Security Event 4625 (Audit Failure): Failed interactive logon (type 2) for FINBRIDGE\cthompson. Reason: unknown username or bad password. Source: DESKTOP-FB022.
+- 08:44:56 - Security Event 4740 (Audit Failure): Account FINBRIDGE\cthompson locked out. Caller computer: DESKTOP-FB022.
+- 08:45:10 - Security Event 4625 (Audit Failure): Failed unlock attempt (type 7) for FINBRIDGE\cthompson. Reason: account locked out. Source: DESKTOP-FB022.
+- 08:45:44 - Security Event 4771 (Audit Failure): Kerberos pre-authentication failed for FINBRIDGE\cthompson. Failure code 0x18 (wrong password). Source IP: 10.10.8.112.
+- 08:46:01 - Security Event 4771 (Audit Failure): Kerberos pre-authentication failed for FINBRIDGE\cthompson. Failure code 0x18 (wrong password). Source IP: 10.10.8.112.
+- 08:46:33 - Security Event 4771 (Audit Failure): Kerberos pre-authentication failed for FINBRIDGE\cthompson. Failure code 0x18 (wrong password). Source IP: 10.10.8.112.
+
+### Reviewed Hypotheses vs Evidence
+
+#### 1. Incorrect password or credential mismatch (human entry error or stale remembered password)
+Status: Supported.
+Determining evidence:
+- 08:44:01 Event 4776 with 0xC000006A (wrong password)
+- 08:44:03, 08:44:28, 08:44:55 Event 4625 bad password (interactive)
+- 08:45:44, 08:46:01, 08:46:33 Event 4771 with 0x18 (wrong password)
+
+#### 2. Account lockout triggered by repeated bad attempts from one saved client/session
+Status: Neutral.
+Determining evidence:
+- Supports lockout by retries: 08:44:03, 08:44:28, 08:44:55 Event 4625 followed by 08:44:56 Event 4740.
+- Weakens one-source qualifier: additional failures originate from 10.10.8.112 at 08:45:44, 08:46:01, and 08:46:33 (Event 4771), not only DESKTOP-FB022.
+
+#### 3. Expired password or newly enforced sign-in condition for that account
+Status: Contradicted.
+Determining evidence:
+- 08:44:01 Event 4776 indicates wrong password (0xC000006A).
+- 08:45:44, 08:46:01, 08:46:33 Event 4771 indicates wrong password (0x18).
+
+#### 4. Conditional Access/MFA challenge failure specific to cthompson context
+Status: Contradicted.
+Determining evidence:
+- Observed failures are credential-validation failures (4776/4771 wrong password) rather than MFA or policy challenge-deny outcomes.
+
+#### 5. Local workstation profile/cache issue preventing successful interactive logon
+Status: Contradicted.
+Determining evidence:
+- 08:44:03, 08:44:28, 08:44:55 Event 4625 explicitly show bad-password failures.
+- Continued failures from a second source (10.10.8.112) at 08:45:44, 08:46:01, and 08:46:33 indicate the issue is not solely a local profile/cache failure on DESKTOP-FB022.
+
+### Surviving Hypothesis
+Incorrect password or credential mismatch, with repeated retries causing account lockout.
+
+### Resolution Steps (Detailed)
+1. Contain active lockout triggers.
+  - Temporarily isolate DESKTOP-FB022 and host 10.10.8.112 from authentication retries.
+  - Confirm no new Event 4625, 4771, or 4776 failures for cthompson for at least 5 to 10 minutes.
+2. Restore user access.
+  - Unlock account FINBRIDGE\cthompson.
+  - Reset password to a temporary strong value and require change at next sign-in.
+  - Validate sign-in first through a known-good web flow, then local interactive logon.
+3. Remove stale credentials from all endpoints and clients.
+  - On DESKTOP-FB022, clear Windows Credential Manager entries and re-authenticate Office/Teams/OneDrive/VPN/mapped resources.
+  - On host 10.10.8.112, identify owner/workload and update any saved credentials in scheduled tasks, services, scripts, and client apps.
+  - On mobile/secondary devices, update stored account password and re-add profile if retry behavior persists.
+4. Validate stabilization.
+  - Verify successful interactive logon and unlock behavior for cthompson.
+  - Monitor for 30 to 60 minutes to ensure no new 4625/4771/4776 failures and no new 4740 lockout.
+5. Prevent recurrence.
+  - Add correlation alerting for repeated bad password events leading to lockout.
+  - Include secondary source IP/device tracing in lockout triage runbook.
+  - Use managed service identities for automation tasks instead of user credentials where applicable.
+
+### Confidence and Residual Gap
+- Confidence: High that bad credential submissions triggered the lockout.
+- Residual gap: Event data does not by itself identify which exact client/process on 10.10.8.112 submitted the stale credentials.
