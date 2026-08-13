@@ -1,0 +1,16 @@
+[2024-03-15 10:01:00] AgentExecutor Starting app install: Adobe Acrobat Pro v23.6
+[2024-03-15 10:01:01] AppInstaller Install context: SYSTEM
+[2024-03-15 10:01:02] AppInstaller Package: AdobeAcrobatPro.intunewin
+[2024-03-15 10:01:03] AppInstaller Install command: msiexec /i AcrobatPro.msi /quiet
+[2024-03-15 10:01:44] AppInstaller Return code: 1603
+[2024-03-15 10:01:44] AppInstaller Install failed. Return code 1603.
+[2024-03-15 10:01:45] DetectionRule Running detection: registry check
+[2024-03-15 10:01:45] DetectionRule Key: HKLM\SOFTWARE\Adobe\Acrobat Reader\23.0
+[2024-03-15 10:01:45] DetectionRule Value: not found
+[2024-03-15 10:01:46] DetectionRule Detection result: Not detected
+[2024-03-15 10:01:47] AgentExecutor App install result: Failed
+[2024-03-15 10:01:47] AgentExecutor Retry scheduled: 60 minutes
+[2024-03-15 11:01:47] AgentExecutor Retry attempt 1: Adobe Acrobat Pro v23.6
+[2024-03-15 11:01:48] AppInstaller Install command: msiexec /i AcrobatPro.msi /quiet
+[2024-03-15 11:02:31] AppInstaller Return code: 1603
+[2024-03-15 11:02:32] AgentExecutor Retry 1 failed. Next retry: 60 minutes
